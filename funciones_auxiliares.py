@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -5,6 +11,38 @@ from matplotlib import pyplot as plt
 import plotly.express as px
 from sklearn.impute import KNNImputer
 import scipy.stats as ss
+import warnings
+
+def dame_variables_categoricas(dataset=None):
+    '''
+    ----------------------------------------------------------------------------------------------------------
+    Función dame_variables_categoricas:
+    ----------------------------------------------------------------------------------------------------------
+        -Descripción: Función que recibe un dataset y devuelve una lista con los nombres de las 
+        variables categóricas
+        -Inputs: 
+            -- dataset: Pandas dataframe que contiene los datos
+        -Return:
+            -- lista_variables_categoricas: lista con los nombres de las variables categóricas del
+            dataset de entrada con menos de 100 valores diferentes
+            -- 1: la ejecución es incorrecta
+    '''
+    if dataset is None:
+        print(u'\nFaltan argumentos por pasar a la función')
+        return 1
+    lista_variables_categoricas = []
+    other = []
+    for i in dataset.columns:
+        if (dataset[i].dtype!=float) & (dataset[i].dtype!=int):
+            dropna=dataset[i].dropna(axis=0, how='all')
+            u_dropna=dropna.unique()
+            unicos = int(len(u_dropna))
+            if unicos < 100:
+                lista_variables_categoricas.append(i)
+            else:
+                other.append(i)
+
+    return lista_variables_categoricas, other
 
 def plot_feature(df, col_name, isContinuous, target):
     """
@@ -44,37 +82,6 @@ def plot_feature(df, col_name, isContinuous, target):
     
     plt.tight_layout()
     
-
-def dame_variables_categoricas(dataset=None):
-    '''
-    ----------------------------------------------------------------------------------------------------------
-    Función dame_variables_categoricas:
-    ----------------------------------------------------------------------------------------------------------
-        -Descripción: Función que recibe un dataset y devuelve una lista con los nombres de las 
-        variables categóricas
-        -Inputs: 
-            -- dataset: Pandas dataframe que contiene los datos
-        -Return:
-            -- lista_variables_categoricas: lista con los nombres de las variables categóricas del
-            dataset de entrada con menos de 100 valores diferentes
-            -- 1: la ejecución es incorrecta
-    '''
-    if dataset is None:
-        print(u'\nFaltan argumentos por pasar a la función')
-        return 1
-    lista_variables_categoricas = []
-    other = []
-    for i in dataset.columns:
-        if (dataset[i].dtype!=float) & (dataset[i].dtype!=int):
-            unicos = int(len(np.unique(dataset[i].dropna(axis=0, how='all'))))
-            if unicos < 100:
-                lista_variables_categoricas.append(i)
-            else:
-                other.append(i)
-
-    return lista_variables_categoricas, other
-
-
 def get_corr_matrix(dataset = None, metodo='pearson', size_figure=[10,8]):
     # Para obtener la correlación de Spearman, sólo cambiar el metodo por 'spearman'
 
@@ -156,3 +163,57 @@ def get_percent_null_values_target(pd_loan, list_var_continuous, target):
 
 
 
+def cramers_v(confusion_matrix):
+    """ 
+    calculate Cramers V statistic for categorial-categorial association.
+    uses correction from Bergsma and Wicher,
+    Journal of the Korean Statistical Society 42 (2013): 323-328
+    
+    confusion_matrix: tabla creada con pd.crosstab()
+    
+    """
+    chi2 = ss.chi2_contingency(confusion_matrix)[0]
+    n = confusion_matrix.sum()
+    phi2 = chi2 / n
+    r, k = confusion_matrix.shape
+    phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+    rcorr = r - ((r-1)**2)/(n-1)
+    kcorr = k - ((k-1)**2)/(n-1)
+    return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+
+def plot_confusion_matrix(confmat):
+    fig, ax = plt.subplots(figsize=(3, 3))
+    ax.matshow(confmat, cmap=plt.cm.Blues, alpha=0.5)
+    for i in range(confmat.shape[0]):
+        for j in range(confmat.shape[1]):
+            ax.text(x=j, y=i, s=confmat[i, j], va='center', ha='center')
+
+    plt.xlabel('predicted label')
+    plt.ylabel('true label')
+
+    plt.tight_layout()
+    plt.show()
+    
+def calcula_metricas(confmat):
+    
+    tn, fp, fn, tp = confmat.ravel()
+
+    acc = (tp+tn)/(tn + fp + fn + tp)
+    sen = tp/(tp+fn)
+    esp = tn/(tn+fp)
+    ppv = tp/(tp+fp)
+    fsc = 2*(sen*ppv/(sen+ppv))
+
+    print('ACC: ', acc)
+    print('SEN: ', sen)
+    print('ESP: ', esp)
+    print('PPV: ', ppv)
+    print('FSC: ', fsc)
+    
+    plt.bar(range(5),[acc,sen,esp,ppv,fsc])
+    plt.xticks(range(5),['ACC','SEN','ESP','PPV','FSC'])
+    plt.plot([-1, 6], [1, 1], color=(0.6, 0.6, 0.6), linestyle='--')
+    plt.xlim((-0.5,4.5))
+    plt.ylim((0,1.1))
+    plt.title('Metricas')
+    plt.show()
